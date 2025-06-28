@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jack AI</title>
+  <style>
+    html, body { margin: 0; overflow: hidden; font-family: Arial; background: black; }
+    #title { position: absolute; top: 20px; width: 100%; text-align: center; font-size: 36px; color: white; text-shadow: 2px 2px 10px #0ff; z-index: 10; }
+    #chatbox { position: absolute; bottom: 100px; left: 20px; z-index: 10; max-width: 90%; }
+    #chatInput { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; }
+    #chatInput input, button { padding: 10px; font-size: 16px; }
+    button { cursor: pointer; }
+    @keyframes pop { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div id="title">Jack AI</div>
+  <div id="chatbox"></div>
+  <div id="chatInput">
+    <input id="question" type="text" placeholder="Ask Jack something..." />
+    <button onclick="askJack()">Ask</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const starsGeometry = new THREE.BufferGeometry();
+    const starCount = 1000;
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount * 3; i++) {
+      starPositions[i] = (Math.random() - 0.5) * 2000;
+    }
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starField = new THREE.Points(starsGeometry, new THREE.PointsMaterial({ color: 0xffffff }));
+    scene.add(starField);
+
+    const robot = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0x00ffff }));
+    const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+    const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.2), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+    eye1.position.set(-0.3, 0.4, 0.6);
+    eye2.position.set(0.3, 0.4, 0.6);
+    robot.add(body, eye1, eye2);
+    scene.add(robot);
+
+    const light = new THREE.AmbientLight(0xffffff);
+    scene.add(light);
+    camera.position.z = 5;
+
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', (e) => {
+      mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+    });
+
+    setInterval(() => {
+      eye1.scale.y = 0.1;
+      eye2.scale.y = 0.1;
+      setTimeout(() => {
+        eye1.scale.y = 1;
+        eye2.scale.y = 1;
+      }, 150);
+    }, 2000);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      robot.position.x += (mouseX * 5 - robot.position.x) * 0.05;
+      robot.position.y += (mouseY * 3 - robot.position.y) * 0.05;
+      starField.rotation.y += 0.0005;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    function showBubble(text) {
+      const chatbox = document.getElementById('chatbox');
+      const bubble = document.createElement('div');
+      bubble.innerText = text;
+      bubble.style.cssText = `background: #0ff; color: black; padding: 10px 15px; border-radius: 20px; margin-top: 10px; animation: pop 0.3s ease; font-size: 18px; box-shadow: 0 0 10px #0ff;`;
+      chatbox.appendChild(bubble);
+      setTimeout(() => bubble.remove(), 7000);
+    }
+
+    function speak(text) {
+      const msg = new SpeechSynthesisUtterance(text);
+      msg.voice = window.speechSynthesis.getVoices()[0];
+      msg.rate = 1;
+      window.speechSynthesis.speak(msg);
+    }
+
+    async function askJack() {
+      const input = document.getElementById('question');
+      const message = input.value.trim();
+      if (!message) return;
+      showBubble("Thinking...");
+      const response = await fetch('/api/chat', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      });
+      const data = await response.json();
+      showBubble(data.reply);
+      speak(data.reply);
+      input.value = "";
+    }
+  </script>
+</body>
+</html>
