@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jack AI</title>
+  <style>
+    body {
+      margin: 0;
+      background: url('https://www.solarsystemscope.com/textures/download/8k_stars_milky_way.jpg') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', sans-serif;
+      color: white;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .logo {
+      font-size: 36px;
+      font-weight: bold;
+      color: white;
+    }
+    nav {
+      display: flex;
+      gap: 20px;
+    }
+    nav a {
+      color: white;
+      text-decoration: none;
+      font-size: 18px;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding-top: 40px;
+    }
+    .robot-container img {
+      width: 600px;
+      max-width: 100%;
+    }
+    .search-box {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 700px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+    input[type="text"] {
+      padding: 12px 20px;
+      width: 100%;
+      font-size: 16px;
+      border: none;
+      border-radius: 30px;
+      background-color: #ffffff;
+      color: #000000;
+    }
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 30px;
+      background: #0ff;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .chat-output {
+      margin-top: 20px;
+      max-width: 700px;
+      padding: 10px;
+    }
+    .bubble {
+      background: rgba(255, 255, 255, 0.9);
+      color: black;
+      padding: 10px 15px;
+      margin: 10px 0;
+      border-radius: 20px;
+      animation: popIn 0.4s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    iframe {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">Jack AI</div>
+    <nav>
+      <a href="#">Home</a>
+      <a href="#">About</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="robot-container">
+      <img src="https://jack-ai-bucket.s3.ap-south-1.amazonaws.com/4k_robot_render.png" alt="Jack AI Robot 4K">
+    </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Ask Jack anything...">
+      <button onclick="speakText()">🔍</button>
+      <button onclick="startListening()">🎙️</button>
+    </div>
+    <div id="chatOutput" class="chat-output"></div>
+    <iframe
+      src="https://ads.com/banner"
+      style="width:728px; height:90px; border:none;"
+      title="Advertisement"></iframe>
+  </main>
+
+  <script>
+    function speakText() {
+      const text = document.getElementById("searchInput").value;
+      if (!text) return;
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.innerText = "Thinking...";
+      document.getElementById("chatOutput").appendChild(bubble);
+
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer YOUR_OPENAI_API_KEY"
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: text }]
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const reply = data.choices?.[0]?.message?.content || "I couldn't respond.";
+        bubble.innerText = reply;
+        const utterance = new SpeechSynthesisUtterance(reply);
+        speechSynthesis.speak(utterance);
+      })
+      .catch(err => {
+        bubble.innerText = "Error getting response";
+      });
+    }
+
+    function startListening() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.start();
+
+      recognition.onresult = function(event) {
+        const speechText = event.results[0][0].transcript;
+        document.getElementById("searchInput").value = speechText;
+        speakText();
+      };
+
+      recognition.onerror = function(event) {
+        alert("Error occurred in recognition: " + event.error);
+      };
+    }
+  </script>
+</body>
+</html>
